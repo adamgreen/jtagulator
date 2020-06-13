@@ -79,18 +79,21 @@ PRI cogCode | clkMask, bit
     DIRA[m_swdioPin]~
 
     clkMask := |< m_swclkPin
+    ' Ignore first cycle since test will output first valid bit on first falling edge which happens after first rising edge.
+    clockInBit(clkMask)
     REPEAT
-        ' Wait for SWCLK falling edge.
-        WAITPEQ(0, clkMask, 0)
-    
-        ' Wait for SWCLK rising edge.
-        WAITPEQ(clkMask, clkMask, 0)
-        bit := INA[m_swdioPin]
-        
+        bit := clockInBit(clkMask)
         ' Store the bit just received if buffer not already full.
         IF m_clockCount < MAX_CAPTURE_BITS
             m_buffer[m_clockCount >> 5] |= bit << (m_clockCount & $1F)
         m_clockCount++
+
+PRI clockInBit(clkMask)
+    ' Wait for SWCLK rising edge.
+    WAITPEQ(clkMask, clkMask, 0)
+    RESULT := INA[m_swdioPin]
+    ' Wait for SWCLK falling edge.
+    WAITPEQ(0, clkMask, 0)
                 
 PUB getCapturedBits(pBuffer)
     ' Wait a bit for the last bit to be captured.

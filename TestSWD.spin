@@ -30,6 +30,7 @@
 CON
     ' System Clock Frequency set to 80MHz.
     _CLKFREQ = 80_000_000
+    
     _CLKMODE = XTAL1 | PLL16X
 
 OBJ
@@ -111,8 +112,8 @@ PUB Main | status, value, bitCount
     ' Tests of host.sendLineReset.
     ' --------------------------------------------------------------------------------
     tst.start(STRING("Capture line reset"))
-        capture.start(0, 1)
         host.config(0, 1, host#SWD_SLOW_CLOCK_RATE)
+        capture.start(0, 1)
         host.sendLineReset
         bitCount := capture.getCapturedBits(@m_buffer)
         tst.checkLong(@bitCountMsg, bitCount, 51)

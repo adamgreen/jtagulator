@@ -400,13 +400,13 @@ SwdRoutine
                 MOV BitCount, #8
                 CALL #ClockInOut
                 ' Switch SWDIO to input and issue turn-around cycle.
-                '   SWCLK falling edge.
-                WAITCNT Time, Delay
-                MOV DIRA, SwclkPinMask ' Only setting SWCLK pin as output.
-                MOV OUTA, #0
                 '   SWCLK rising edge.
                 WAITCNT Time, Delay
+                MOV DIRA, SwclkPinMask ' Only setting SWCLK pin as output.
                 MOV OUTA, SwclkPinMask
+                '   SWCLK falling edge.
+                WAITCNT Time, Delay
+                MOV OUTA, #0
                 ' Read in the 3-bit ACK response.
                 MOV BitCount, #3
                 CALL #ClockInOut
@@ -432,15 +432,17 @@ SwdRoutine
 
 :TurnAroundDone ' Issue final turn around cycle and make SWDIO output again.
                 ' UNDONE: Should really switch to output on next clock cycle.
+                '   SWCLK rising edge.
+                WAITCNT Time, Delay
+                MOV OUTA, SwclkPinMask
                 '   SWCLK falling edge.
                 WAITCNT Time, Delay
                 MOV OUTA, #0
-                '   SWCLK rising edge.
-                WAITCNT Time, Delay
+                ' Make SWDIO and SWCLK pins both output again.
                 MOV TempVal, SwclkPinMask
                 OR TempVal, SwdioPinMask
                 MOV DIRA, TempVal
-                MOV OUTA, SwclkPinMask
+                MOV OUTA, SwdioPinMask
                 ' Fall through to :CmdDone
                  
 :CmdDone        ' Update m_respIndex to let calling cog know we are done with 
@@ -463,15 +465,7 @@ SwdRoutine
 ClockInOut      MOV LoopCount, BitCount
                 MOV TempVal, INA
                 MOV DataIn, #0
-:Loop           ' Set SWDIO output to lsb of DataOut before next SWCLK falling edge.
-                WAITCNT Time, Delay
-                TEST DataOut, #1 WZ
-                MUXNZ TempVal, SwdioPinMask
-                SHR DataOut, #1
-                ' SWCLK falling edge.
-                ANDN TempVal, SwclkPinMask
-                MOV OUTA, TempVal
-                ' Shift in the next bit from SWDIO into DataIn before SWCLK rising edge.
+:Loop           ' Shift in the next bit from SWDIO into DataIn before SWCLK rising edge.
                 WAITCNT Time, Delay
                 SHR DataIn, #1
                 TEST SwdioPinMask, INA WZ
@@ -479,6 +473,14 @@ ClockInOut      MOV LoopCount, BitCount
                 XOR DataInParity, DataIn
                 ' SWCLK rising edge.
                 OR TempVal, SwclkPinMask
+                MOV OUTA, TempVal
+                ' Set SWDIO output to lsb of DataOut before next SWCLK falling edge.
+                WAITCNT Time, Delay
+                TEST DataOut, #1 WZ
+                MUXNZ TempVal, SwdioPinMask
+                SHR DataOut, #1
+                ' SWCLK falling edge.
+                ANDN TempVal, SwclkPinMask
                 MOV OUTA, TempVal
                 ' Loop around until all desired bits have been clocked in/out.
                 DJNZ LoopCount, #:Loop
